@@ -1,33 +1,46 @@
-from flask import Flask
-from flask_mysqldb import MySQL
+from flask import Flask, jsonify
 from flask_jwt_extended import JWTManager
-from flask_cors import CORS
-from config import Config
+import mysql.connector
+import os
+from dotenv import load_dotenv
 
-mysql = MySQL()
-jwt = JWTManager()
+load_dotenv()
 
-def create_app():
-    app = Flask(__name__)
-    app.config.from_object(Config)
+app = Flask(__name__)
 
-    mysql.init_app(app)
-    jwt.init_app(app)
-    CORS(app)
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 
-    from routes.auth_routes import auth_bp
-    from routes.transaction_routes import transaction_bp
-    from routes.budget_routes import budget_bp
-    from routes.goal_routes import goal_bp
+jwt = JWTManager(app)
 
-    app.register_blueprint(auth_bp, url_prefix="/api/auth")
-    app.register_blueprint(transaction_bp, url_prefix="/api/transactions")
-    app.register_blueprint(budget_bp, url_prefix="/api/budget")
-    app.register_blueprint(goal_bp, url_prefix="/api/goals")
 
-    return app
-    
-app = create_app()
+# ✅ Database Connection Function
+def get_db_connection():
+    return mysql.connector.connect(
+        host=os.getenv("MYSQL_HOST"),
+        user=os.getenv("MYSQL_USER"),
+        password=os.getenv("MYSQL_PASSWORD"),
+        database=os.getenv("MYSQL_DB"),
+        port=int(os.getenv("MYSQL_PORT", 3306))
+    )
+
+
+# ✅ Test Route
+@app.route("/")
+def home():
+    return jsonify({"message": "Finance System Backend Running Successfully 🚀"})
+
+
+# Import routes
+from routes.auth_routes import auth_bp
+from routes.transaction_routes import transaction_bp
+from routes.budget_routes import budget_bp
+from routes.goal_routes import goal_bp
+
+app.register_blueprint(auth_bp, url_prefix="/api")
+app.register_blueprint(transaction_bp, url_prefix="/api")
+app.register_blueprint(budget_bp, url_prefix="/api")
+app.register_blueprint(goal_bp, url_prefix="/api")
+
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

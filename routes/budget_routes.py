@@ -1,58 +1,45 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app import mysql
+from app import get_db_connection
 
-budget_bp = Blueprint("budget", __name__)
+budget_bp = Blueprint("budgets", __name__)
 
-# ➜ Add / Set Monthly Budget
-@budget_bp.route("/set", methods=["POST"])
+
+@budget_bp.route("/budgets", methods=["POST"])
 @jwt_required()
 def set_budget():
     user_id = get_jwt_identity()
     data = request.get_json()
 
-    month = data["month"]
-    amount = data["amount"]
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
-    cur = mysql.connection.cursor()
+    cursor.execute(
+        "INSERT INTO budgets (user_id, category, amount) VALUES (%s, %s, %s)",
+        (user_id, data["category"], data["amount"]),
+    )
 
-    # Check if budget already exists for this month
-    cur.execute("SELECT id FROM budgets WHERE user_id=%s AND month=%s",
-                (user_id, month))
-    existing = cur.fetchone()
+    conn.commit()
+    cursor.close()
+    conn.close()
 
-    if existing:
-        # Update existing budget
-        cur.execute("UPDATE budgets SET amount=%s WHERE id=%s",
-                    (amount, existing[0]))
-    else:
-        # Insert new budget
-        cur.execute("INSERT INTO budgets (user_id, month, amount) VALUES (%s,%s,%s)",
-                    (user_id, month, amount))
-
-    mysql.connection.commit()
-    cur.close()
-
-    return jsonify({"message": "Budget saved successfully"})
+    return jsonify({"message": "Budget set successfully"}), 201
 
 
-# ➜ Get User Budgets
-@budget_bp.route("/", methods=["GET"])
+@budget_bp.route("/budgets", methods=["GET"])
 @jwt_required()
 def get_budgets():
     user_id = get_jwt_identity()
 
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT id, month, amount FROM budgets WHERE user_id=%s", (user_id,))
-    budgets = cur.fetchall()
-    cur.close()
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
 
-    budget_list = []
-    for b in budgets:
-        budget_list.append({
-            "id": b[0],
-            "month": b[1],
-            "amount": float(b[2])
-        })
+    cursor.execute(
+        "SELECT * FROM budgets WHERE user_id = %s", (user_id,)
+    )
+    budgets = cursor.fetchall()
 
-    return jsonify(budget_list)
+    cursor.close()
+    conn.close()
+
+    return jsonify(budgets)
