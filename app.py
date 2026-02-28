@@ -1,3 +1,4 @@
+print("LOADED VERSION XYZ 999")
 from flask import Flask, jsonify
 from flask_jwt_extended import JWTManager
 import mysql.connector
