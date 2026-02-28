@@ -41,6 +41,10 @@ app.register_blueprint(transaction_bp, url_prefix="/api")
 app.register_blueprint(budget_bp, url_prefix="/api")
 app.register_blueprint(goal_bp, url_prefix="/api")
 
+@app.route("/test")
+def test():
+    return "TEST WORKING"
+
 @app.route("/health", methods=["GET"])
 def health():
     return {
